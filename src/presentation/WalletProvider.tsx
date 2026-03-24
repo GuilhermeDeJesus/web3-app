@@ -9,6 +9,7 @@ interface WalletContextProps {
   isMetaMaskInstalled: boolean;
   network: string | null;
   error: string | null;
+  balance: string | null;
 }
 
 const WalletContext = createContext<WalletContextProps | undefined>(undefined);
@@ -42,6 +43,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   const [isMetaMaskInstalled, setIsMetaMaskInstalled] = useState(false);
   const [network, setNetwork] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [balance, setBalance] = useState<string | null>(null);
   // just disconnect everything, like, bye wallet
   const disconnect = () => {
     setAddress(null);
@@ -49,6 +51,28 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
     setNetwork(null);
     setError(null);
   };
+
+  // Fetch balance whenever address or network changes
+  useEffect(() => {
+    const fetchBalance = async () => {
+      const ethereum = getMetaMaskProvider();
+      if (ethereum && address) {
+        try {
+          const result = await ethereum.request({
+            method: 'eth_getBalance',
+            params: [address, 'latest']
+          });
+          // Convert from hex to ETH
+          setBalance((parseInt(result, 16) / 1e18).toFixed(4));
+        } catch (e) {
+          setBalance(null);
+        }
+      } else {
+        setBalance(null);
+      }
+    };
+    fetchBalance();
+  }, [address, network]);
 
   useEffect(() => {
     const ethereum = getMetaMaskProvider();
@@ -124,7 +148,7 @@ export const WalletProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <WalletContext.Provider value={{ address, isConnected, connect, disconnect, isMetaMaskInstalled, network, error }}>
+    <WalletContext.Provider value={{ address, isConnected, connect, disconnect, isMetaMaskInstalled, network, error, balance }}>
       {children}
     </WalletContext.Provider>
   );
